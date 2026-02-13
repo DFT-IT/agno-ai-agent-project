@@ -1,13 +1,16 @@
 # Imports
 from dotenv import load_dotenv
+from fastapi import FastAPI
+from pydantic import BaseModel
 from agno.agent import Agent
 from agno.db.sqlite import SqliteDb
 from agno.models.openai import OpenAIResponses
 from agno.tools.duckduckgo import DuckDuckGoTools
 from agno.tools.arxiv import ArxivTools
+from agno.os import AgentOS
+from agno.tools import tool
 import httpx
 import json
-from agno.tools import tool
 
 # Laden der Umgebungsvariablen
 load_dotenv()
@@ -33,18 +36,42 @@ def get_top_hackernews_stories(num_stories: int = 5) -> str:
 
     return json.dumps(stories)
 
-def main():
-	# Agent mit OpenAI Modell, Datenbank, Chat History und Tools erstellen
-    agent = Agent(
-        model=OpenAIResponses(id="gpt-4o-mini"),
-        db=SqliteDb(db_file="tmp/agent.db"),
-        tools=[DuckDuckGoTools(), ArxivTools(), get_top_hackernews_stories],
-        instructions=["Du bist ein Tech-News Assistent. Nutze das HackerNews Tool um aktuelle Stories zu finden."],
-        add_history_to_context=True,
-        num_history_runs=5,
-        markdown=True,
-    )
-    agent.cli_app(stream=True)
+# Agent erstellen
+agent = Agent(
+    id="tech-agent",
+    model=OpenAIResponses(id="gpt-4o-mini"),
+    db=SqliteDb(db_file="tmp/agent.db"),
+    tools=[DuckDuckGoTools(), ArxivTools(), get_top_hackernews_stories],
+    instructions=["Du bist ein Tech-News Assistent. Nutze das HackerNews Tool um aktuelle Stories zu finden."],
+    add_history_to_context=True,
+    num_history_runs=5,
+    markdown=True,
+)
+
+# Custom FastAPI App
+custom_app = FastAPI(title="Tech Agent API")
+
+# Request Schema
+class ChatRequest(BaseModel):
+    message: str
+    session_id: str | None = None
+
+# Sauberer Chat Endpoint
+@custom_app.post("/chat")
+def chat(request: ChatRequest):
+    response = agent.run(request.message, session_id=request.session_id)
+    return {
+        "response": response.content,
+        "session_id": response.session_id,
+    }
+
+# AgentOS mit Custom App als base_app
+agent_os = AgentOS(
+    agents=[agent],
+    base_app=custom_app,
+)
+
+app = agent_os.get_app()
 
 if __name__ == "__main__":
-    main()
+    agent_os.serve(app="main:app", reload=True)
