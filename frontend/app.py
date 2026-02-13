@@ -27,13 +27,19 @@ if "session_id" not in st.session_state:
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
+        # Show agents if available
+        if "agents" in message and message["agents"]:
+            with st.expander("👥 Agents involved"):
+                for agent in message["agents"]:
+                    st.markdown(f"**{agent['name']}** ({agent['role']})")
 
 # Chat input
 if user_input := st.chat_input("Type your message..."):
     # Add user message to history
     st.session_state.messages.append({
         "role": "user",
-        "content": user_input
+        "content": user_input,
+        "agents": []
     })
     
     # Display user message
@@ -55,14 +61,22 @@ if user_input := st.chat_input("Type your message..."):
             
             result = response.json()
             
-            # Display only the response content
+            # Display the response content
             response_text = result.get("response", "No response")
             st.markdown(response_text)
+            
+            # Display agents used
+            agents_used = result.get("agents_used", [])
+            if agents_used:
+                with st.expander("👥 Agents involved"):
+                    for agent in agents_used:
+                        st.markdown(f"**{agent['name']}** - {agent['role']}")
             
             # Add to history
             st.session_state.messages.append({
                 "role": "assistant",
-                "content": response_text
+                "content": response_text,
+                "agents": agents_used
             })
             
         except requests.exceptions.ConnectionError:
