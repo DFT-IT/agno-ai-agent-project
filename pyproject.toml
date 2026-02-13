@@ -6,6 +6,8 @@ readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "agno>=2.5.0",
+    "ddgs>=9.10.0",
+    "duckduckgo-search>=8.1.1",
     "openai>=2.20.0",
     "sqlalchemy>=2.0.46",
 ]
