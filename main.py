@@ -4,6 +4,7 @@ from agno.agent import Agent
 from agno.db.sqlite import SqliteDb
 from agno.models.openai import OpenAIResponses
 from agno.tools.duckduckgo import DuckDuckGoTools
+from agno.tools.arxiv import ArxivTools
 
 # Laden der Umgebungsvariablen
 load_dotenv()
@@ -13,7 +14,11 @@ def main():
     agent = Agent(
         model=OpenAIResponses(id="gpt-4o-mini"),
         db=SqliteDb(db_file="tmp/agent.db"),
-        tools=[DuckDuckGoTools()],
+        tools=[DuckDuckGoTools(), ArxivTools()],
+        instructions=[
+            "Du bist ein Forschungsassistent.",
+            "Nutze ArxivTools um akademische Paper zu suchen und zusammenzufassen oder DuckDuckGo zum Suchen.",
+        ],
         add_history_to_context=True,
         num_history_runs=5,
         markdown=True,
